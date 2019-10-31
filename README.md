@@ -8,7 +8,8 @@ go를 아직 배우는 중이다보니 아마 Spring과 Flask가 적절히 섞�
 목표는 thread게시판을 REST api로 구현하는것!
 
 TODO:
-[] User Authentication
-[] Thrid party Authentication
-[] CRUD Repository
-[] Unittest 
+
+- [ ] User Authentication
+- [ ] Thrid party Authentication
+- [ ] CRUD Repository
+- [ ] Unittest 
