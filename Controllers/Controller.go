@@ -1,7 +1,6 @@
 package Controllers
 
 import (
-	"fmt"
 	"log"
 
 	"github.com/gin-gonic/gin"
@@ -54,7 +53,7 @@ func InitController(r *gin.Engine) {
 				method = r.PUT
 			}
 
-			path := fmt.Sprintf("%s/%s", controller.Path, handler.Path)
+			path := controller.Path + handler.Path
 			method(path, preHandler(handler.Handler))
 		}
 	}
