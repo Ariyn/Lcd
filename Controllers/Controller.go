@@ -18,8 +18,8 @@ type HTTPErrorHandler func(*gin.Context, string, string, error)
 type HTTPError struct {
 	handler HTTPErrorHandler
 	path    string
-	comment string
-	err     error
+	message string
+	rawErr  error
 }
 
 type Handler struct {
@@ -35,6 +35,7 @@ type Controller struct {
 
 var controllers = []Controller{
 	UserController,
+	ArticleController,
 }
 
 func InitController(r *gin.Engine) {
@@ -66,8 +67,9 @@ func preHandler(h gin.HandlerFunc) gin.HandlerFunc {
 		defer func() {
 			httpError := recover()
 			if httpError != nil {
-				err := httpError.(HTTPError)
-				err.handler(c, err.path, err.comment, err.err)
+				err := httpError.(*HTTPError)
+				log.Printf("[Error]controller %s: %s: %#v", err.path, err.message, err.rawErr)
+				err.handler(c, err.path, err.message, err.rawErr)
 			}
 		}()
 		h(c)
@@ -76,16 +78,14 @@ func preHandler(h gin.HandlerFunc) gin.HandlerFunc {
 
 // WARNING: this functions is not fully implemented and in wrong place.
 // path: c.Request.URL.String()
-func BadRequest(c *gin.Context, path, message string, err error) {
-	log.Printf("[Error]controller %s: %s: %s", path, message, err)
+func badRequest(c *gin.Context, path, message string, err error) {
 	c.JSON(400, gin.H{
 		"status":  "error",
 		"message": "WrongRequest",
 	})
 }
 
-func InternalServerError(c *gin.Context, path, message string, err error) {
-	log.Printf("[Error]controller %s: %s: %s", path, message, err)
+func internalServerError(c *gin.Context, path, message string, err error) {
 	c.JSON(500, gin.H{
 		"status":  "error",
 		"message": "InternalServerError",
