@@ -25,23 +25,23 @@ func UserGetHandler(c *gin.Context) {
 func UserPostHandler(c *gin.Context) {
 	bodyReader, err := c.Request.GetBody()
 	if err != nil {
-		panic(&HTTPError{BadRequest, c.Request.URL.String(), "can't read post body", err})
+		panic(&HTTPError{badRequest, c.Request.URL.String(), "can't read post body", err})
 	}
 
 	body, err := ioutil.ReadAll(bodyReader)
 	if err != nil {
-		panic(&HTTPError{BadRequest, c.Request.URL.String(), "can't read post body", err})
+		panic(&HTTPError{badRequest, c.Request.URL.String(), "can't read post body", err})
 	}
 
 	var user *Models.User
 	err = json.Unmarshal(body, user)
 	if err != nil {
-		panic(&HTTPError{BadRequest, c.Request.URL.String(), "can't parse body to user", err})
+		panic(&HTTPError{badRequest, c.Request.URL.String(), "can't parse body to user", err})
 	}
 
 	userID, err := Repositories.User.CREATE(user)
 	if err != nil {
-		panic(&HTTPError{InternalServerError, c.Request.URL.String(), "can't save user", err})
+		panic(&HTTPError{internalServerError, c.Request.URL.String(), "can't save user", err})
 	}
 
 	c.JSON(200, gin.H{
