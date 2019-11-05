@@ -6,13 +6,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-const (
-	GET    = "GET"
-	POST   = "POST"
-	DELETE = "DELETE"
-	PUT    = "PUT"
-)
-
 type HTTPErrorHandler func(*gin.Context, string, string, error)
 type HTTPError struct {
 	handler HTTPErrorHandler
@@ -43,13 +36,13 @@ func InitController(r *gin.Engine) {
 			var method func(string, ...gin.HandlerFunc) gin.IRoutes
 
 			switch handler.Method {
-			case GET:
+			case Models.GET:
 				method = r.GET
-			case POST:
+			case Models.POST:
 				method = r.POST
-			case DELETE:
+			case Models.DELETE:
 				method = r.DELETE
-			case PUT:
+			case Models.PUT:
 				method = r.PUT
 			}
 
