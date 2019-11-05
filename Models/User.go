@@ -6,6 +6,7 @@ type User struct {
 	Account  string
 	Password string
 	Nickname string
+	Role     Role
 }
 
 // MatchPassword checks User.Password matches with input password
