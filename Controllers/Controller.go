@@ -3,6 +3,7 @@ package Controllers
 import (
 	"log"
 
+	"github.com/ariyn/Lcd/Models"
 	"github.com/gin-gonic/gin"
 )
 
@@ -32,21 +33,23 @@ var controllers = []Controller{
 
 func InitController(r *gin.Engine) {
 	for _, controller := range controllers {
+		group := r.Group(controller.Path)
+
 		for _, handler := range controller.Handlers {
 			var method func(string, ...gin.HandlerFunc) gin.IRoutes
 
 			switch handler.Method {
 			case Models.GET:
-				method = r.GET
+				method = group.GET
 			case Models.POST:
-				method = r.POST
+				method = group.POST
 			case Models.DELETE:
-				method = r.DELETE
+				method = group.DELETE
 			case Models.PUT:
-				method = r.PUT
+				method = group.PUT
 			}
 
-			path := controller.Path + handler.Path
+			path := handler.Path
 			method(path, preHandler(handler.Handler))
 		}
 	}
