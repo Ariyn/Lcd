@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"log"
 	"time"
 
 	jwt "github.com/appleboy/gin-jwt"
@@ -21,19 +22,34 @@ var identityKey = "id"
 
 var AuthRules = []Models.AuthRule{}
 
+func AddAuthRules(rule *Models.AuthRule) bool {
+	// TODO: check duplicated rule
+	AuthRules = append(AuthRules, *rule)
+
+	return true
+}
+
 func InitJwtMiddleware() (*jwt.GinJWTMiddleware, error) {
 	return jwt.New(&jwt.GinJWTMiddleware{
-		Realm:      "develop",
-		Key:        []byte(SECRET_KEY),
-		Timeout:    time.Hour,
-		MaxRefresh: time.Hour,
+		Realm:         "develop",
+		Key:           []byte(SECRET_KEY),
+		Timeout:       time.Hour,
+		MaxRefresh:    time.Hour,
+		DisabledAbort: true,
 		PayloadFunc: func(data interface{}) jwt.MapClaims {
-			if v, ok := data.(Models.User); ok {
+			if v, ok := data.(*Models.User); ok {
 				return jwt.MapClaims{
 					identityKey: v.Account,
 				}
 			}
 			return jwt.MapClaims{}
+		},
+		IdentityHandler: func(c *gin.Context) interface{} {
+			claims := jwt.ExtractClaims(c)
+			log.Printf("identity handler %#v\n", claims)
+			return &Models.User{
+				Account: claims[identityKey].(string),
+			}
 		},
 		Authenticator: func(c *gin.Context) (interface{}, error) {
 			var loginVals Login
@@ -51,11 +67,45 @@ func InitJwtMiddleware() (*jwt.GinJWTMiddleware, error) {
 			}
 			return nil, err
 		},
-		Authorizator: func(data interface{}, c *gin.Context) bool {
-			return true
+		Unauthorized: func(c *gin.Context, code int, message string) {
+			if allowAnonyRequest(c) {
+				identity := "anonymous"
+				c.Set("JWT_TOKEN", "")
+				c.Set("JWT_PAYLOAD", jwt.MapClaims{identityKey: identity})
+				c.Set(identityKey, identity)
+
+				c.Next()
+			} else {
+				c.Abort()
+				c.JSON(code, gin.H{
+					"code":    code,
+					"message": message,
+				})
+			}
 		},
 		TokenLookup:   "header: Authorization, query: token, cookie: jwt",
 		TokenHeadName: "Bearer",
 		TimeFunc:      time.Now,
 	})
+}
+
+func allowAnonyRequest(c *gin.Context) bool {
+	expect := &Models.AuthRule{
+		Method:   Models.Method(c.Request.Method),
+		FullPath: c.FullPath(),
+	}
+
+	isAllow := false
+	for _, rule := range AuthRules {
+		if !rule.AllowAnonymous {
+			continue
+		}
+
+		if rule.FullPath == expect.FullPath && rule.Method == expect.Method {
+			isAllow = true
+			break
+		}
+	}
+
+	return isAllow
 }
