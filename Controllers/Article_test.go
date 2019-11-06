@@ -26,11 +26,13 @@ const EMPTY_BODY = ""
 
 var NOT_EXISTING_ARTICLE_ID = strconv.Itoa(-1)
 var GIN_ENGINE *gin.Engine
+var JWT_MIDDLEWARE *jwt.GinJWTMiddleware
 
 type request struct {
 	method      string
 	path        string
 	article     *Models.Article
+	user        *Models.User
 	body        string
 	contentType string
 }
@@ -38,6 +40,11 @@ type request struct {
 func (r request) getBodyReader() *bytes.Buffer {
 	if r.article != nil {
 		data, _ := json.Marshal(r.article)
+		return bytes.NewBuffer(data)
+	}
+
+	if r.user != nil {
+		data, _ := json.Marshal(r.user)
 		return bytes.NewBuffer(data)
 	}
 
