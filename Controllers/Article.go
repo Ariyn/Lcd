@@ -14,10 +14,10 @@ import (
 var ArticleController Controller = Controller{
 	Path: "/article",
 	Handlers: []Handler{
-		Handler{Path: "/", Method: POST, Handler: postArticle},
-		Handler{Path: "/:articleID", Method: GET, Handler: getArticle},
-		Handler{Path: "/:articleID", Method: DELETE, Handler: deleteArticle},
-		Handler{Path: "/:articleID", Method: PUT, Handler: putArticle},
+		Handler{Path: "", Method: Models.POST, Handler: postArticle, UseAuth: false},
+		Handler{Path: "/:articleID", Method: Models.GET, Handler: getArticle, UseAuth: false},
+		Handler{Path: "/:articleID", Method: Models.DELETE, Handler: deleteArticle, UseAuth: false},
+		Handler{Path: "/:articleID", Method: Models.PUT, Handler: putArticle, UseAuth: false},
 	},
 }
 

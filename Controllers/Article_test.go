@@ -82,7 +82,7 @@ func TestGetArticle(t *testing.T) {
 
 	path := ArticleController.Path + "/" + articleID
 	w := requestArticle(request{
-		method: GET,
+		method: Models.GET,
 		path:   path,
 	})
 
@@ -97,7 +97,7 @@ func TestGetArticle(t *testing.T) {
 func TestGetArticleWithNotExistsArticleID(t *testing.T) {
 	path := ArticleController.Path + "/" + NOT_EXISTING_ARTICLE_ID
 	w := requestArticle(request{
-		method: GET,
+		method: Models.GET,
 		path:   path,
 	})
 
@@ -114,7 +114,7 @@ func TestGetArticleWithInvalidAticle(t *testing.T) {
 
 	path := ArticleController.Path + "/" + id
 	w := requestArticle(request{
-		method: GET,
+		method: Models.GET,
 		path:   path,
 	})
 
@@ -131,9 +131,9 @@ func TestPostArticle(t *testing.T) {
 	var sampleArticle = &Models.Article{
 		Title: "test",
 	}
-	path := ArticleController.Path + "/"
+	path := ArticleController.Path
 	w := requestArticle(request{
-		method:  POST,
+		method:  Models.POST,
 		path:    path,
 		article: sampleArticle,
 	})
@@ -149,9 +149,9 @@ func TestPostArticle(t *testing.T) {
 }
 
 func TestPostArticleWithIncorrectContentType(t *testing.T) {
-	path := ArticleController.Path + "/"
+	path := ArticleController.Path
 	w := requestArticle(request{
-		method:      POST,
+		method:      Models.POST,
 		path:        path,
 		contentType: "plain/text",
 	})
@@ -160,9 +160,9 @@ func TestPostArticleWithIncorrectContentType(t *testing.T) {
 }
 
 func TestPostArticleWithInvalidBody(t *testing.T) {
-	path := ArticleController.Path + "/"
+	path := ArticleController.Path
 	w := requestArticle(request{
-		method: POST,
+		method: Models.POST,
 		path:   path,
 		body:   "invalid json",
 	})
@@ -180,7 +180,7 @@ func TestDeleteArticle(t *testing.T) {
 
 	path := ArticleController.Path + "/" + id
 	w := requestArticle(request{
-		method: DELETE,
+		method: Models.DELETE,
 		path:   path,
 	})
 
@@ -193,7 +193,7 @@ func TestDeleteArticleWithNotExistsArticleID(t *testing.T) {
 
 	path := ArticleController.Path + "/" + NOT_EXISTING_ARTICLE_ID
 	w := requestArticle(request{
-		method: DELETE,
+		method: Models.DELETE,
 		path:   path,
 	})
 
@@ -210,7 +210,7 @@ func TestPutArticle(t *testing.T) {
 	updatedTitle := SAMPLE_TITLE + "_POSTFIX"
 	newArticle := &Models.Article{Title: updatedTitle}
 	w := requestArticle(request{
-		method:  PUT,
+		method:  Models.PUT,
 		path:    path,
 		article: newArticle,
 	})
@@ -229,7 +229,7 @@ func TestPutArticleWithNotExistsArticleId(t *testing.T) {
 	updatedTitle := SAMPLE_TITLE + "_POSTFIX"
 	newArticle := &Models.Article{Title: updatedTitle}
 	w := requestArticle(request{
-		method:  PUT,
+		method:  Models.PUT,
 		path:    path,
 		article: newArticle,
 	})
@@ -246,7 +246,7 @@ func TestPutArticleWithInvalidBody(t *testing.T) {
 
 	path := ArticleController.Path + "/" + id
 	w := requestArticle(request{
-		method: PUT,
+		method: Models.PUT,
 		path:   path,
 		body:   "invalid json string",
 	})
