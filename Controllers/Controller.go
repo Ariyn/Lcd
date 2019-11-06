@@ -4,6 +4,7 @@ import (
 	"log"
 
 	"github.com/ariyn/Lcd/Models"
+	"github.com/ariyn/Lcd/Service/middleware"
 	"github.com/gin-gonic/gin"
 )
 
@@ -17,7 +18,7 @@ type HTTPError struct {
 
 type Handler struct {
 	Path    string
-	Method  string
+	Method  Models.Method
 	Handler gin.HandlerFunc
 	UseAuth bool
 }
@@ -52,6 +53,13 @@ func InitController(r *gin.Engine) {
 
 			path := handler.Path
 			method(path, preHandler(handler.Handler))
+
+			middleware.AddAuthRules(&Models.AuthRule{
+				FullPath:       controller.Path + handler.Path,
+				Method:         handler.Method,
+				AllowAnonymous: !handler.UseAuth,
+			})
+			// log.Println(controller.Path+handler.Path, handler.Method, !handler.UseAuth)
 		}
 	}
 }

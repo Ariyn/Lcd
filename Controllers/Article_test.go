@@ -3,8 +3,6 @@ package Controllers_test
 import (
 	"bytes"
 	"encoding/json"
-	"io/ioutil"
-	"log"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -14,6 +12,7 @@ import (
 	. "github.com/ariyn/Lcd/Controllers"
 	"github.com/ariyn/Lcd/Models"
 	"github.com/ariyn/Lcd/Repositories"
+	"github.com/ariyn/Lcd/Service/middleware"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 )
@@ -29,7 +28,7 @@ var GIN_ENGINE *gin.Engine
 var JWT_MIDDLEWARE *jwt.GinJWTMiddleware
 
 type request struct {
-	method      string
+	method      Models.Method
 	path        string
 	article     *Models.Article
 	user        *Models.User
@@ -286,7 +285,7 @@ func unmarshalResponseArticle(body *bytes.Buffer) (*Models.Article, error) {
 }
 
 func requestArticle(r request) *httptest.ResponseRecorder {
-	req, _ := http.NewRequest(r.method, r.path, r.getBodyReader())
+	req, _ := http.NewRequest(string(r.method), r.path, r.getBodyReader())
 	req.Header.Add("Content-Type", r.getContentType())
 
 	w := httptest.NewRecorder()

@@ -18,7 +18,7 @@ import (
 )
 
 type request struct {
-	method        string
+	method        Models.Method
 	path          string
 	body          string
 	loginBody     *middleware.Login
@@ -198,7 +198,7 @@ func getJwtToken() (string, error, func()) {
 
 func doRequest(r request) *httptest.ResponseRecorder {
 	body := r.getBodyReader()
-	req, _ := http.NewRequest(r.method, r.path, body)
+	req, _ := http.NewRequest(string(r.method), r.path, body)
 	req.Header.Add("Content-Type", r.getContentType())
 	req.Header.Add("Authorization", "Bearer "+r.authorization)
 

@@ -193,7 +193,7 @@ func getJwtToken(user *Models.User) (string, error) {
 }
 
 func requestUser(r request) *httptest.ResponseRecorder {
-	req, _ := http.NewRequest(r.method, r.path, r.getBodyReader())
+	req, _ := http.NewRequest(string(r.method), r.path, r.getBodyReader())
 	req.Header.Add("Content-Type", r.getContentType())
 	req.Header.Add("Authorization", "Bearer "+r.authToken)
 

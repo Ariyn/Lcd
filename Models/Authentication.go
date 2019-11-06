@@ -3,9 +3,10 @@ package Models
 type Role string
 
 type AuthRule struct {
-	FullPath string
-	Action   Action
-	Role     Role
+	FullPath       string
+	Method         Method
+	AllowAnonymous bool
+	Role           Role
 }
 
 func (a AuthRule) IsAuthorizable(u *User) bool {

@@ -14,10 +14,10 @@ import (
 var ArticleController Controller = Controller{
 	Path: "/article",
 	Handlers: []Handler{
-		Handler{Path: "", Method: Models.POST, Handler: postArticle, UseAuth: false},
-		Handler{Path: "/:articleID", Method: Models.GET, Handler: getArticle, UseAuth: false},
-		Handler{Path: "/:articleID", Method: Models.DELETE, Handler: deleteArticle, UseAuth: false},
-		Handler{Path: "/:articleID", Method: Models.PUT, Handler: putArticle, UseAuth: false},
+		Handler{Path: "", Method: Models.POST, Handler: postArticle, UseAuth: true},
+		Handler{Path: "/:articleID", Method: Models.GET, Handler: getArticle},
+		Handler{Path: "/:articleID", Method: Models.DELETE, Handler: deleteArticle, UseAuth: true},
+		Handler{Path: "/:articleID", Method: Models.PUT, Handler: putArticle, UseAuth: true},
 	},
 }
 
@@ -36,6 +36,7 @@ func getArticle(c *gin.Context) {
 		}
 		panic(&HTTPError{internalServerError, c.Request.URL.Path, "Unknown error", err})
 	}
+
 	c.JSON(200, article)
 }
 
