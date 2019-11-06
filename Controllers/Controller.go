@@ -19,6 +19,7 @@ type Handler struct {
 	Path    string
 	Method  string
 	Handler gin.HandlerFunc
+	UseAuth bool
 }
 
 type Controller struct {
