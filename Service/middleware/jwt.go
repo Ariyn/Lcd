@@ -6,7 +6,6 @@ import (
 
 	jwt "github.com/appleboy/gin-jwt"
 	"github.com/ariyn/Lcd/Models"
-	"github.com/ariyn/Lcd/Models/Errors"
 	"github.com/ariyn/Lcd/Repositories"
 	"github.com/gin-gonic/gin"
 )
@@ -46,7 +45,7 @@ func InitJwtMiddleware() (*jwt.GinJWTMiddleware, error) {
 		},
 		IdentityHandler: func(c *gin.Context) interface{} {
 			claims := jwt.ExtractClaims(c)
-			log.Printf("identity handler %#v\n", claims)
+			log.Printf("identity handler %#v, %#v, %#v\n", claims, identityKey, claims[identityKey])
 			return &Models.User{
 				Account: claims[identityKey].(string),
 			}
@@ -58,17 +57,15 @@ func InitJwtMiddleware() (*jwt.GinJWTMiddleware, error) {
 			}
 
 			user, err := Repositories.User.FIND_WITH_ID(loginVals.Username)
-			if user.MatchPassword(loginVals.Password) {
+			if err == nil && user.MatchPassword(loginVals.Password) {
 				return user, nil
 			}
 
-			err = Errors.NotCorrectLoginInfo{
-				Name: "JWT.Authenticator",
-			}
-			return nil, err
+			return nil, jwt.ErrFailedAuthentication
 		},
 		Unauthorized: func(c *gin.Context, code int, message string) {
-			if allowAnonyRequest(c) {
+			if allowAnonyRequest(c) && isEmptyError(message) {
+				log.Println(message)
 				identity := "anonymous"
 				c.Set("JWT_TOKEN", "")
 				c.Set("JWT_PAYLOAD", jwt.MapClaims{identityKey: identity})
@@ -108,4 +105,8 @@ func allowAnonyRequest(c *gin.Context) bool {
 	}
 
 	return isAllow
+}
+
+func isEmptyError(message string) bool {
+	return message == jwt.ErrEmptyCookieToken.Error() || message == jwt.ErrEmptyAuthHeader.Error() || message == jwt.ErrEmptyParamToken.Error() || message == jwt.ErrEmptyQueryToken.Error()
 }
