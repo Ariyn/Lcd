@@ -94,6 +94,7 @@ func getEntireUser(c *gin.Context) {
 func putUser(c *gin.Context) {
 	userID := c.Param("userID")
 	user, err := Repositories.User.READ(userID)
+	log.Printf("read user %#v, %#v", user, err)
 	if err != nil {
 		url := c.Request.URL.Path
 		if isNoSuchUser(err) {

@@ -34,6 +34,7 @@ type request struct {
 	user        *Models.User
 	body        string
 	contentType string
+	authToken   string
 	query       map[string]string
 }
 
