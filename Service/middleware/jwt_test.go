@@ -70,7 +70,7 @@ func TestMain(m *testing.M) {
 	middleware.AddAuthRules(&Models.AuthRule{
 		FullPath:       "/login",
 		Method:         Models.POST,
-		Role:           "user",
+		Role:           Models.RoleUser,
 		AllowAnonymous: true,
 	})
 
@@ -81,7 +81,7 @@ func TestMain(m *testing.M) {
 	middleware.AddAuthRules(&Models.AuthRule{
 		FullPath:       authGroup + authAction,
 		Method:         Models.GET,
-		Role:           "user",
+		Role:           Models.RoleUser,
 		AllowAnonymous: false,
 	})
 
@@ -91,7 +91,7 @@ func TestMain(m *testing.M) {
 	middleware.AddAuthRules(&Models.AuthRule{
 		FullPath:       authGroup + anonyAction,
 		Method:         Models.GET,
-		Role:           "user",
+		Role:           Models.RoleUser,
 		AllowAnonymous: true,
 	})
 

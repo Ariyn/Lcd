@@ -33,13 +33,6 @@ func (u User) GetArticles() {
 
 // IsAuthrizable compare user's role and AuthRule.
 // it will return true if user is authorized.
-func (u User) IsAuthrizable(roles []Role) bool {
-	minRole := RoleAnonymous
-	for _, role := range roles {
-		if minRole.IsHighRole(role) {
-			minRole = role
-		}
-	}
-
-	return u.Role.IsHighRole(minRole)
+func (u User) IsAuthrizable(rule AuthRule) bool {
+	return u.Role.IsHighRole(rule.Role)
 }

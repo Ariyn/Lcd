@@ -20,11 +20,11 @@ const (
 var UserController Controller = Controller{
 	Path: "/user",
 	Handlers: []Handler{
-		Handler{Path: "", Method: Models.GET, Handler: getEntireUser},
+		Handler{Path: "", Method: Models.GET, Handler: getEntireUser, UseAuth: true, Roles: "Owner,Editor,Admin"},
 		Handler{Path: "", Method: Models.POST, Handler: postUser},
 		Handler{Path: "/:userID", Method: Models.GET, Handler: getUser, UseAuth: true},
-		Handler{Path: "/:userID", Method: Models.PUT, Handler: putUser, UseAuth: true},
-		Handler{Path: "/:userID", Method: Models.DELETE, Handler: deleteUser, UseAuth: true},
+		Handler{Path: "/:userID", Method: Models.PUT, Handler: putUser, UseAuth: true, Roles: "Owner,Admin"},
+		Handler{Path: "/:userID", Method: Models.DELETE, Handler: deleteUser, UseAuth: true, Roles: "Owner,Admin"},
 	},
 }
 

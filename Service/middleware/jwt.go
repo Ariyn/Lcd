@@ -39,8 +39,10 @@ func InitJwtMiddleware() (*jwt.GinJWTMiddleware, error) {
 			if v, ok := data.(*Models.User); ok {
 				return jwt.MapClaims{
 					identityKey: v.Account,
+					"user":      v,
 				}
 			}
+
 			return jwt.MapClaims{}
 		},
 		IdentityHandler: func(c *gin.Context) interface{} {
