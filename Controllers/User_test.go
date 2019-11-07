@@ -22,14 +22,16 @@ const (
 	_SAMPLE_USER_PASSWORD = "password"
 )
 
+const _MANY_USER_SIZE = 100
+
 func TestGetUser(t *testing.T) {
-	id, err := createUser()
-	if err != nil {
+	user := &Models.User{}
+	if err := createUser(user); err != nil {
 		assert.Fail(t, "Can't create user", err)
 		return
 	}
-	defer deleteUser(getUser(id))
-	path := UserController.Path + "/" + id
+	defer deleteUser(user)
+	path := UserController.Path + "/" + strconv.Itoa(user.ID)
 
 	w := requestUser(request{
 		method: Models.GET,
@@ -50,45 +52,18 @@ func TestGetUserWithNotExistsUserID(t *testing.T) {
 	assert.Equal(t, 400, w.Code)
 }
 
-// func TestGetUserWithME(t *testing.T) {
-// 	return
-// 	id, err := createUser()
-// 	if err != nil {
-// 		assert.Fail(t, "Can't create user", err)
-// 		return
-// 	}
-// 	user := getUser(id)
-// 	log.Println(user)
-// 	defer deleteUser(user)
-// 	token, err := getJwtToken(user)
-// 	if err != nil {
-// 		assert.Fail(t, "Can't generate jwt token", err)
-// 		return
-// 	}
-// 	path := UserController.Path + "/" + "me"
-//
-// 	w := requestUser(request{
-// 		method:    Models.GET,
-// 		path:      path,
-// 		authToken: token,
-// 	})
-//
-// 	assert.Equal(t, 200, w.Code)
-// }
-
 func TestPutUser(t *testing.T) {
-	userID, err := createUser()
-	if err != nil {
+	user := &Models.User{}
+	if err := createUser(user); err != nil {
 		assert.Fail(t, "Can't create user", err)
 		return
 	}
-	user := getUser(userID)
 	defer deleteUser(user)
 
 	expected := Models.User(*user)
 	expected.Nickname = "updated user nickname"
 
-	path := UserController.Path + "/" + userID
+	path := UserController.Path + "/" + strconv.Itoa(user.ID)
 	w := requestUser(request{
 		method: Models.PUT,
 		path:   path,
@@ -114,14 +89,14 @@ func TestPutUserWithNotExistsUser(t *testing.T) {
 }
 
 func TestPutUserWithInvalidJson(t *testing.T) {
-	userID, err := createUser()
-	if err != nil {
+	user := &Models.User{}
+	if err := createUser(user); err != nil {
 		assert.Fail(t, "Can't create user", err)
 		return
 	}
-	defer deleteUser(getUser(userID))
+	defer deleteUser(user)
 
-	path := UserController.Path + "/" + userID
+	path := UserController.Path + "/" + strconv.Itoa(user.ID)
 	w := requestUser(request{
 		method: Models.PUT,
 		path:   path,
@@ -170,32 +145,143 @@ func TestPostUserWithInvalidJson(t *testing.T) {
 	assert.Equal(t, 400, w.Code)
 }
 
-func createUser() (string, error) {
-	user := &Models.User{
-		Account: _SAMPLE_USER_ACCOUNT,
+func TestGetEntireUser(t *testing.T) {
+	ids := createManyUsers()
+	defer deleteManyUsers(ids)
+	size := 100
+
+	path := UserController.Path
+
+	w := requestUser(request{
+		path:   path,
+		method: Models.GET,
+		query: map[string]string{
+			"size": strconv.Itoa(size),
+		},
+	})
+
+	assert.Equal(t, 200, w.Code)
+
+	var users map[string]Models.User
+	if err := parseUsers(w.Body, &users); err != nil {
+		assert.Fail(t, "Can't parse users", err, w.Body.String())
+		return
 	}
-	id, err := Repositories.User.CREATE(user)
-	return strconv.Itoa(id), err
+
+	assert.Equal(t, _MANY_USER_SIZE, len(users))
+	for i := 1; i <= size; i++ {
+		index := strconv.Itoa(i)
+
+		user, ok := users[index]
+		assert.True(t, ok)
+		assert.Equal(t, index, user.Nickname)
+	}
+}
+
+func TestDeleteUser(t *testing.T) {
+	user := &Models.User{}
+	if err := createUser(user); err != nil {
+		log.Printf("Can't create user at %d: %#v\n", user.ID, err)
+		return
+	}
+	defer deleteUser(user)
+
+	w := requestUser(request{
+		path:   UserController.Path + "/" + strconv.Itoa(user.ID),
+		method: Models.DELETE,
+	})
+
+	assert.Equal(t, 200, w.Code)
+	err := getUser(strconv.Itoa(user.ID), nil)
+	assert.EqualError(t, err, "no such user User::"+strconv.Itoa(user.ID))
+}
+
+func TestDeleteUserWithNotExistsUser(t *testing.T) {
+	w := requestUser(request{
+		path:   UserController.Path + "/" + "-1",
+		method: Models.DELETE,
+	})
+
+	assert.Equal(t, 400, w.Code)
+}
+
+func parseUsers(body *bytes.Buffer, users *map[string]Models.User) error {
+	return json.Unmarshal(body.Bytes(), users)
+}
+
+func createManyUsers() []string {
+	ids := []string{}
+
+	for i := 1; i <= _MANY_USER_SIZE; i++ {
+		user := &Models.User{
+			Account:  _SAMPLE_USER_ACCOUNT,
+			Nickname: strconv.Itoa(i),
+		}
+		err := createUser(user)
+		if err != nil {
+			log.Printf("Can't create user at %d, %d: %#v\n", i, user.ID, err)
+			break
+		}
+
+		ids = append(ids, strconv.Itoa(user.ID))
+	}
+
+	log.Printf("created %d users", len(ids))
+	if len(ids) != _MANY_USER_SIZE {
+		deleteManyUsers(ids)
+		ids = []string{}
+	}
+
+	return ids
+}
+
+func deleteManyUsers(ids []string) {
+	for i, userID := range ids {
+		if err := deleteUserWithID(userID); err != nil {
+			log.Printf("Can't delete %d user, %#v", i, err)
+		}
+	}
+}
+
+func createUser(user *Models.User) error {
+	if user == nil {
+		user = &Models.User{
+			Account: _SAMPLE_USER_ACCOUNT,
+		}
+	}
+
+	_, err := Repositories.User.CREATE(user)
+	return err
 }
 
 func deleteUser(user *Models.User) {
 	Repositories.User.DELETE(strconv.Itoa(user.ID))
 }
 
-func getUser(id string) *Models.User {
-	user, _ := Repositories.User.READ(id)
-	return user
+func deleteUserWithID(id string) error {
+	return Repositories.User.DELETE(id)
 }
 
-func getJwtToken(user *Models.User) (string, error) {
-	token, _, err := JWT_MIDDLEWARE.TokenGenerator(user)
-	return token, err
+func getUser(id string, user *Models.User) error {
+	loadedUser, err := Repositories.User.READ(id)
+	if loadedUser != nil {
+		*user = *loadedUser
+	}
+	return err
 }
 
 func requestUser(r request) *httptest.ResponseRecorder {
 	req, _ := http.NewRequest(string(r.method), r.path, r.getBodyReader())
 	req.Header.Add("Content-Type", r.getContentType())
 	req.Header.Add("Authorization", "Bearer "+r.authToken)
+
+	q := req.URL.Query()
+	for key, value := range r.query {
+		log.Println(key, value)
+		q.Add(key, value)
+	}
+
+	req.URL.RawQuery = q.Encode()
 
 	w := httptest.NewRecorder()
 	GIN_ENGINE.ServeHTTP(w, req)

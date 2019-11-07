@@ -3,6 +3,8 @@ package Controllers_test
 import (
 	"bytes"
 	"encoding/json"
+	"io/ioutil"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -12,7 +14,6 @@ import (
 	. "github.com/ariyn/Lcd/Controllers"
 	"github.com/ariyn/Lcd/Models"
 	"github.com/ariyn/Lcd/Repositories"
-	"github.com/ariyn/Lcd/Service/middleware"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 )
@@ -25,7 +26,6 @@ const EMPTY_BODY = ""
 
 var NOT_EXISTING_ARTICLE_ID = strconv.Itoa(-1)
 var GIN_ENGINE *gin.Engine
-var JWT_MIDDLEWARE *jwt.GinJWTMiddleware
 
 type request struct {
 	method      Models.Method
@@ -34,6 +34,7 @@ type request struct {
 	user        *Models.User
 	body        string
 	contentType string
+	query       map[string]string
 }
 
 func (r request) getBodyReader() *bytes.Buffer {

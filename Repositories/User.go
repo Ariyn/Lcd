@@ -97,6 +97,40 @@ func (r *UserRepository) READ(key string) (*Models.User, error) {
 	return User, nil
 }
 
+func (r *UserRepository) MREAD_WITH_KEY(keys []string) (map[string]Models.User, error) {
+	redisKeys := []string{}
+	for _, key := range keys {
+		redisKeys = append(redisKeys, CreateKey(r.Prefix, key))
+	}
+
+	results, err := r.Client.MGet(redisKeys...).Result()
+	if err != nil {
+		log.Printf("[Error]redis can't read multiple results, %#v", err)
+		return nil, err
+	}
+
+	users := map[string]Models.User{}
+	for i, result := range results {
+		if result == nil {
+			continue
+		}
+
+		user := Models.User{}
+		switch vv := result.(type) {
+		case string:
+			if err := json.Unmarshal([]byte(vv), &user); err != nil {
+				log.Printf("[Error]json can't parse redis result: %d: %#v", i, err)
+			} else {
+				users[strconv.Itoa(i)] = user
+			}
+		default:
+			log.Printf("something else %#v, %#v, %#v", i, vv, result)
+		}
+	}
+
+	return users, nil
+}
+
 func (r *UserRepository) CREATE(v *Models.User) (int, error) {
 	counter := r.Client.Incr(r.Prefix + ":counter").Val()
 

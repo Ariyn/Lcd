@@ -13,13 +13,29 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+const (
+	_DEFAULT_PAGINATION_SIZE = 100
+)
+
 var UserController Controller = Controller{
 	Path: "/user",
 	Handlers: []Handler{
+		Handler{Path: "", Method: Models.GET, Handler: getEntireUser},
 		Handler{Path: "", Method: Models.POST, Handler: postUser},
 		Handler{Path: "/:userID", Method: Models.GET, Handler: getUser, UseAuth: true},
 		Handler{Path: "/:userID", Method: Models.PUT, Handler: putUser, UseAuth: true},
+		Handler{Path: "/:userID", Method: Models.DELETE, Handler: deleteUser, UseAuth: true},
 	},
+}
+
+type paging struct {
+	Start int `form:"start, default=1"`
+	Size  int `form:"size, default=100"`
+}
+
+type success struct {
+	code    int
+	message string
 }
 
 func getUser(c *gin.Context) {
@@ -51,6 +67,30 @@ func getUser(c *gin.Context) {
 	c.JSON(200, user)
 }
 
+func getEntireUser(c *gin.Context) {
+	var paging paging
+
+	err := c.BindQuery(&paging)
+	if err != nil {
+		panic(&HTTPError{badRequest, c.Request.URL.Path, "Not enought paramters", err})
+	}
+
+	userIDs := []string{}
+
+	// redis index starts from 1.
+	// start 0, size 100 means 100 users.
+	// so make sure result be correct size
+	for i := paging.Start; i < paging.Start+paging.Size+1; i++ {
+		userIDs = append(userIDs, strconv.Itoa(i))
+	}
+
+	if users, err := Repositories.User.MREAD_WITH_KEY(userIDs); err != nil {
+		panic(&HTTPError{internalServerError, c.Request.URL.Path, "Can't read redis", err})
+	} else {
+		c.JSON(200, users)
+	}
+}
+
 func putUser(c *gin.Context) {
 	userID := c.Param("userID")
 	user, err := Repositories.User.READ(userID)
@@ -65,8 +105,8 @@ func putUser(c *gin.Context) {
 		}
 	}
 
-	updateUser, err := getUserDTO(c)
-	if err != nil {
+	updateUser := &Models.User{}
+	if err := getUserDTO(c, updateUser); err != nil {
 		panic(&HTTPError{badRequest, c.Request.URL.Path, "Bad request", err})
 	}
 
@@ -88,8 +128,8 @@ func putUser(c *gin.Context) {
 }
 
 func postUser(c *gin.Context) {
-	user, err := getUserDTO(c)
-	if err != nil {
+	user := &Models.User{}
+	if err := getUserDTO(c, user); err != nil {
 		panic(&HTTPError{badRequest, c.Request.URL.Path, "Bad request", err})
 	}
 
@@ -107,19 +147,36 @@ func postUser(c *gin.Context) {
 	c.JSON(200, user)
 }
 
-func getUserDTO(c *gin.Context) (*Models.User, error) {
-	user := &Models.User{}
+func deleteUser(c *gin.Context) {
+	userID := c.Param("userID")
 
+	// TODO: check user role
+
+	if Repositories.User.EXISTS(userID) == false {
+		panic(&HTTPError{badRequest, c.Request.URL.Path, "No such user", nil})
+	}
+
+	if err := Repositories.User.DELETE(userID); err != nil {
+		panic(&HTTPError{internalServerError, c.Request.URL.Path, "Can't remove user", err})
+	}
+
+	c.JSON(200, success{
+		code:    200,
+		message: "success to delete",
+	})
+}
+
+func getUserDTO(c *gin.Context, user *Models.User) error {
 	data, err := c.GetRawData()
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	if err := json.Unmarshal(data, user); err != nil {
-		return nil, err
+		return err
 	}
 
-	return user, nil
+	return nil
 }
 
 func isNoSuchUser(err error) bool {
