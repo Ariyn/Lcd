@@ -20,11 +20,11 @@ const (
 var UserController Controller = Controller{
 	Path: "/user",
 	Handlers: []Handler{
-		Handler{Path: "", Method: Models.GET, Handler: getEntireUser, UseAuth: true, Roles: "Owner,Editor,Admin"},
+		Handler{Path: "", Method: Models.GET, Handler: getEntireUser, UseAuth: true, Roles: "User,Editor,Admin"},
 		Handler{Path: "", Method: Models.POST, Handler: postUser},
 		Handler{Path: "/:userID", Method: Models.GET, Handler: getUser, UseAuth: true},
-		Handler{Path: "/:userID", Method: Models.PUT, Handler: putUser, UseAuth: true, Roles: "Owner,Admin"},
-		Handler{Path: "/:userID", Method: Models.DELETE, Handler: deleteUser, UseAuth: true, Roles: "Owner,Admin"},
+		Handler{Path: "/:userID", Method: Models.PUT, Handler: putUser, UseAuth: true, Roles: "User,Admin"},
+		Handler{Path: "/:userID", Method: Models.DELETE, Handler: deleteUser, UseAuth: true, Roles: "User,Admin"},
 	},
 }
 
@@ -40,11 +40,6 @@ type success struct {
 
 func getUser(c *gin.Context) {
 	userID := c.Param("userID")
-	p, ok := c.Get("JWT_PAYLOAD")
-	log.Printf("%#v %#v\n", p, ok)
-
-	p, ok = c.Get("JWT_TOKEN")
-	log.Printf("%#v %#v\n", p, ok)
 
 	if strings.ToLower(userID) == "me" {
 		claims := jwt.ExtractClaims(c)
@@ -133,6 +128,8 @@ func postUser(c *gin.Context) {
 	if err := getUserDTO(c, user); err != nil {
 		panic(&HTTPError{badRequest, c.Request.URL.Path, "Bad request", err})
 	}
+
+	user.Role = Models.RoleUser
 
 	userID, err := Repositories.User.CREATE(user)
 	if err != nil {
