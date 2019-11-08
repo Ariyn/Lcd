@@ -27,38 +27,6 @@ const EMPTY_BODY = ""
 var NOT_EXISTING_ARTICLE_ID = strconv.Itoa(-1)
 var GIN_ENGINE *gin.Engine
 
-type request struct {
-	method      Models.Method
-	path        string
-	article     *Models.Article
-	user        *Models.User
-	body        string
-	contentType string
-	authToken   string
-	query       map[string]string
-}
-
-func (r request) getBodyReader() *bytes.Buffer {
-	if r.article != nil {
-		data, _ := json.Marshal(r.article)
-		return bytes.NewBuffer(data)
-	}
-
-	if r.user != nil {
-		data, _ := json.Marshal(r.user)
-		return bytes.NewBuffer(data)
-	}
-
-	return bytes.NewBufferString(r.body)
-}
-
-func (r request) getContentType() string {
-	if r.contentType == "" {
-		return "application/json"
-	}
-	return r.contentType
-}
-
 func TestMain(m *testing.M) {
 	client := Repositories.InitRedis(TEST_DATABASE)
 	defer client.Close()

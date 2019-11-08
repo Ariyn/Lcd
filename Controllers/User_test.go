@@ -3,11 +3,7 @@ package Controllers_test
 import (
 	"bytes"
 	"encoding/json"
-	"io/ioutil"
 	"log"
-	"net/http"
-	"net/http/httptest"
-	"os"
 	"strconv"
 	"testing"
 
@@ -33,9 +29,10 @@ func TestGetUser(t *testing.T) {
 	defer deleteUser(user)
 	path := UserController.Path + "/" + strconv.Itoa(user.ID)
 
-	w := requestUser(request{
-		method: Models.GET,
-		path:   path,
+	w := doRequest(request{
+		method:   Models.GET,
+		path:     path,
+		authUser: AdminRoleUser,
 	})
 
 	assert.Equal(t, 200, w.Code)
@@ -44,9 +41,10 @@ func TestGetUser(t *testing.T) {
 func TestGetUserWithNotExistsUserID(t *testing.T) {
 	path := UserController.Path + "/" + "-1"
 
-	w := requestUser(request{
-		method: Models.GET,
-		path:   path,
+	w := doRequest(request{
+		method:   Models.GET,
+		path:     path,
+		authUser: AdminRoleUser,
 	})
 
 	assert.Equal(t, 400, w.Code)
@@ -64,7 +62,7 @@ func TestPutUser(t *testing.T) {
 	expected.Nickname = "updated user nickname"
 
 	path := UserController.Path + "/" + strconv.Itoa(user.ID)
-	w := requestUser(request{
+	w := doRequest(request{
 		method: Models.PUT,
 		path:   path,
 		user:   &expected,
@@ -76,20 +74,20 @@ func TestPutUser(t *testing.T) {
 }
 
 func TestPutUserWithNotExistsUser(t *testing.T) {
-	user := &Models.User{}
-
 	path := UserController.Path + "/" + "-1"
-	w := requestUser(request{
-		method: Models.PUT,
-		path:   path,
-		user:   user,
+	w := doRequest(request{
+		method:   Models.PUT,
+		path:     path,
+		authUser: AdminRoleUser,
 	})
 
 	assert.Equal(t, 400, w.Code)
 }
 
 func TestPutUserWithInvalidJson(t *testing.T) {
-	user := &Models.User{}
+	user := &Models.User{
+		Account: _SAMPLE_USER_ACCOUNT,
+	}
 	if err := createUser(user); err != nil {
 		assert.Fail(t, "Can't create user", err)
 		return
@@ -97,10 +95,11 @@ func TestPutUserWithInvalidJson(t *testing.T) {
 	defer deleteUser(user)
 
 	path := UserController.Path + "/" + strconv.Itoa(user.ID)
-	w := requestUser(request{
-		method: Models.PUT,
-		path:   path,
-		body:   `invalid json`,
+	w := doRequest(request{
+		method:   Models.PUT,
+		path:     path,
+		body:     `invalid json`,
+		authUser: user,
 	})
 	// TODO: body:`{"test":"Test"}` is also invalid json, but server will not return invelid json error
 
@@ -115,10 +114,11 @@ func TestPostUser(t *testing.T) {
 
 	expected := &Models.User{
 		Account: _SAMPLE_USER_ACCOUNT,
+		Role:    Models.RoleUser,
 	}
 
 	path := UserController.Path
-	w := requestUser(request{
+	w := doRequest(request{
 		path:   path,
 		method: Models.POST,
 		user:   expected,
@@ -136,7 +136,7 @@ func TestPostUser(t *testing.T) {
 
 func TestPostUserWithInvalidJson(t *testing.T) {
 	path := UserController.Path
-	w := requestUser(request{
+	w := doRequest(request{
 		path:   path,
 		method: Models.POST,
 		body:   "invalid json",
@@ -186,9 +186,10 @@ func TestDeleteUser(t *testing.T) {
 	}
 	defer deleteUser(user)
 
-	w := requestUser(request{
-		path:   UserController.Path + "/" + strconv.Itoa(user.ID),
-		method: Models.DELETE,
+	w := doRequest(request{
+		path:     UserController.Path + "/" + strconv.Itoa(user.ID),
+		method:   Models.DELETE,
+		authUser: AdminRoleUser,
 	})
 
 	assert.Equal(t, 200, w.Code)
@@ -197,9 +198,10 @@ func TestDeleteUser(t *testing.T) {
 }
 
 func TestDeleteUserWithNotExistsUser(t *testing.T) {
-	w := requestUser(request{
-		path:   UserController.Path + "/" + "-1",
-		method: Models.DELETE,
+	w := doRequest(request{
+		path:     UserController.Path + "/" + "-1",
+		method:   Models.DELETE,
+		authUser: AdminRoleUser,
 	})
 
 	assert.Equal(t, 400, w.Code)
@@ -235,71 +237,9 @@ func createManyUsers() []string {
 	return ids
 }
 
-func deleteManyUsers(ids []string) {
-	for i, userID := range ids {
-		if err := deleteUserWithID(userID); err != nil {
-			log.Printf("Can't delete %d user, %#v", i, err)
-		}
-	}
-}
-
-func createUser(user *Models.User) error {
-	if user == nil {
-		user = &Models.User{
-			Account: _SAMPLE_USER_ACCOUNT,
-		}
-	}
-
-	_, err := Repositories.User.CREATE(user)
-	return err
-}
-
-func deleteUser(user *Models.User) {
-	Repositories.User.DELETE(strconv.Itoa(user.ID))
-}
-
-func deleteUserWithID(id string) error {
-	return Repositories.User.DELETE(id)
-}
-
-func getUser(id string, user *Models.User) error {
-	loadedUser, err := Repositories.User.READ(id)
-	if loadedUser != nil {
-		*user = *loadedUser
-	}
-	return err
-}
-
-func requestUser(r request) *httptest.ResponseRecorder {
-	req, _ := http.NewRequest(string(r.method), r.path, r.getBodyReader())
-	req.Header.Add("Content-Type", r.getContentType())
-	req.Header.Add("Authorization", "Bearer "+r.authToken)
-
-	q := req.URL.Query()
-	for key, value := range r.query {
-		log.Println(key, value)
-		q.Add(key, value)
-	}
-
-	req.URL.RawQuery = q.Encode()
-
-	w := httptest.NewRecorder()
-	GIN_ENGINE.ServeHTTP(w, req)
-
-	return w
-}
-
 func unmarshalResponseUser(body *bytes.Buffer) (*Models.User, error) {
 	user := &Models.User{}
 
 	err := json.Unmarshal(body.Bytes(), user)
 	return user, err
-}
-
-func enableLog() {
-	log.SetOutput(os.Stdout)
-}
-
-func disenableLog() {
-	log.SetOutput(ioutil.Discard)
 }
