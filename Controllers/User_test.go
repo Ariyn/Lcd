@@ -38,6 +38,34 @@ func TestGetUser(t *testing.T) {
 	assert.Equal(t, 200, w.Code)
 }
 
+func TestGetUserWithRoles(t *testing.T) {
+	user := &Models.User{}
+	if err := createUser(user); err != nil {
+		assert.Fail(t, "Can't create user", err)
+		return
+	}
+	defer deleteUser(user)
+
+	path := UserController.Path + "/" + strconv.Itoa(user.ID)
+
+	roles := map[*Models.User]int{
+		AnonymousRoleUser: 403,
+		UserRoleUser:      200,
+		EditorRoleUser:    200,
+		AdminRoleUser:     200,
+	}
+
+	for user, result := range roles {
+		w := doRequest(request{
+			method:   Models.GET,
+			path:     path,
+			authUser: user,
+		})
+
+		assert.Equal(t, result, w.Code)
+	}
+}
+
 func TestGetUserWithNotExistsUserID(t *testing.T) {
 	path := UserController.Path + "/" + "-1"
 
@@ -48,6 +76,40 @@ func TestGetUserWithNotExistsUserID(t *testing.T) {
 	})
 
 	assert.Equal(t, 400, w.Code)
+}
+
+func TestGetEntireUser(t *testing.T) {
+	ids := createManyUsers()
+	defer deleteManyUsers(ids)
+	size := 100
+
+	path := UserController.Path
+
+	w := doRequest(request{
+		path:   path,
+		method: Models.GET,
+		query: map[string]string{
+			"size": strconv.Itoa(size),
+		},
+		authUser: AdminRoleUser,
+	})
+
+	assert.Equal(t, 200, w.Code)
+
+	var users map[string]Models.User
+	if err := parseUsers(w.Body, &users); err != nil {
+		assert.Fail(t, "Can't parse users", err, w.Body.String())
+		return
+	}
+
+	assert.Equal(t, _MANY_USER_SIZE, len(users))
+	for i := 1; i <= size; i++ {
+		index := strconv.Itoa(i)
+
+		user, ok := users[index]
+		assert.True(t, ok)
+		assert.Equal(t, index, user.Nickname)
+	}
 }
 
 func TestPutUser(t *testing.T) {
@@ -143,39 +205,6 @@ func TestPostUserWithInvalidJson(t *testing.T) {
 	})
 
 	assert.Equal(t, 400, w.Code)
-}
-
-func TestGetEntireUser(t *testing.T) {
-	ids := createManyUsers()
-	defer deleteManyUsers(ids)
-	size := 100
-
-	path := UserController.Path
-
-	w := requestUser(request{
-		path:   path,
-		method: Models.GET,
-		query: map[string]string{
-			"size": strconv.Itoa(size),
-		},
-	})
-
-	assert.Equal(t, 200, w.Code)
-
-	var users map[string]Models.User
-	if err := parseUsers(w.Body, &users); err != nil {
-		assert.Fail(t, "Can't parse users", err, w.Body.String())
-		return
-	}
-
-	assert.Equal(t, _MANY_USER_SIZE, len(users))
-	for i := 1; i <= size; i++ {
-		index := strconv.Itoa(i)
-
-		user, ok := users[index]
-		assert.True(t, ok)
-		assert.Equal(t, index, user.Nickname)
-	}
 }
 
 func TestDeleteUser(t *testing.T) {

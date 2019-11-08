@@ -35,6 +35,7 @@ func TestMain(m *testing.M) {
 	client.FlushDB()
 
 	GIN_ENGINE = gin.Default()
+	GIN_ENGINE.Use(authorizingMiddleware)
 	InitController(GIN_ENGINE)
 
 	log.SetOutput(ioutil.Discard)

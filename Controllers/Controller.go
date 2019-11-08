@@ -2,6 +2,8 @@ package Controllers
 
 import (
 	"log"
+	"reflect"
+	"runtime"
 	"strings"
 
 	"github.com/ariyn/Lcd/Models"
@@ -81,8 +83,11 @@ func InitController(r *gin.Engine) {
 				method = group.PUT
 			}
 
+			methodName := runtime.FuncForPC(reflect.ValueOf(method).Pointer()).Name()
+			log.Printf("%s, %s, %#v", controller.Path+handler.Path, methodName, handler)
+
 			path := handler.Path
-			method(path, preHandler(&handler))
+			method(path, preHandler(handler))
 
 			middleware.AddAuthRules(&Models.AuthRule{
 				FullPath:       controller.Path + handler.Path,
@@ -96,42 +101,63 @@ func InitController(r *gin.Engine) {
 
 // preHandler will handle request first.
 // this method will parse request body, urlParameters, etc...
-func preHandler(h *Handler) gin.HandlerFunc {
+func preHandler(h Handler) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		defer func() {
 			httpError := recover()
 			if httpError != nil {
 				err := httpError.(*HTTPError)
-				log.Printf("[Error]controller %s: %s: %#v", err.path, err.message, err.rawErr)
+				log.Printf("[Error]controller %s %s: %s: %#v", string(h.Method), err.path, err.message, err.rawErr)
 				err.handler(c, err.path, err.message, err.rawErr)
 			}
 		}()
 
-		checkUserRole(c, h)
-		h.Handler(c)
+		user := getUserOrAnonymous(c)
+		if ahtorizeUserRole(user, &h) {
+			h.Handler(c)
+		} else {
+			panic(&HTTPError{forbidden, c.Request.URL.Path, "Forbidden action", nil})
+		}
 	}
 }
 
-func checkUserRole(c *gin.Context, h *Handler) bool {
+func getUserOrAnonymous(c *gin.Context) *Models.User {
+	var user *Models.User
+
+	tempUser, ok := c.Get("user")
+	if !ok {
+		user = &Models.User{
+			Role: Models.RoleAnonymous,
+		}
+	} else {
+		user, ok = tempUser.(*Models.User)
+		if !ok {
+			panic(&HTTPError{internalServerError, c.Request.URL.Path, "Can't load user authentication", nil})
+		}
+	}
+
+	return user
+}
+
+func ahtorizeUserRole(user *Models.User, h *Handler) bool {
 	if !h.UseAuth {
 		return true
 	}
 
-	user, ok := c.Get("user")
-	if !ok {
-		url := c.Request.URL.Path
-		panic(&HTTPError{internalServerError, url, "[Error]Can't find user", nil})
-	}
-
-	log.Println(user)
-	h.GetRoles()
-	return true
+	return user.IsAuthrizable(h.GetRoles())
 }
 
 func badRequest(c *gin.Context, path, message string, err error) {
 	c.JSON(400, gin.H{
 		"status":  "error",
 		"message": "WrongRequest",
+	})
+}
+
+func forbidden(c *gin.Context, path, message string, err error) {
+	c.JSON(403, gin.H{
+		"status":  "error",
+		"message": "FrobiddenAction",
 	})
 }
 
