@@ -11,6 +11,16 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+type paging struct {
+	Start int `form:"start, default=1"`
+	Size  int `form:"size, default=30"`
+}
+
+type success struct {
+	code    int
+	message string
+}
+
 type HTTPErrorHandler func(*gin.Context, string, string, error)
 type HTTPError struct {
 	handler HTTPErrorHandler
@@ -36,8 +46,6 @@ func (h Handler) GetRoles() []Models.Role {
 		roleName := strings.TrimSpace(roleName)
 
 		switch roleName {
-		case "Owner":
-			role = Models.RoleOwner
 		case "User":
 			role = Models.RoleUser
 		case "Editor":
@@ -144,7 +152,13 @@ func ahtorizeUserRole(user *Models.User, h *Handler) bool {
 		return true
 	}
 
-	return user.IsAuthrizable(h.GetRoles())
+	minRole := Models.RoleAdmin
+	for _, role := range h.GetRoles() {
+		if minRole.IsHighRole(role) {
+			minRole = role
+		}
+	}
+	return user.Role.IsHighRole(minRole)
 }
 
 func badRequest(c *gin.Context, path, message string, err error) {

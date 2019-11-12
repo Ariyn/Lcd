@@ -24,5 +24,5 @@ const (
 // IsHighRole returns role is higher then other.
 // higher role means much permission and authorized more.
 func (r Role) IsHighRole(other Role) bool {
-	return other < r
+	return other <= r
 }

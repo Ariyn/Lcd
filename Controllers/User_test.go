@@ -125,9 +125,10 @@ func TestPutUser(t *testing.T) {
 
 	path := UserController.Path + "/" + strconv.Itoa(user.ID)
 	w := doRequest(request{
-		method: Models.PUT,
-		path:   path,
-		user:   &expected,
+		method:   Models.PUT,
+		path:     path,
+		user:     &expected,
+		authUser: UserRoleUser,
 	})
 
 	assert.Equal(t, 200, w.Code)

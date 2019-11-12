@@ -13,29 +13,15 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-const (
-	_DEFAULT_PAGINATION_SIZE = 100
-)
-
 var UserController Controller = Controller{
 	Path: "/user",
 	Handlers: []Handler{
 		Handler{Path: "", Method: Models.GET, Handler: getEntireUser, UseAuth: true, Roles: "User,Editor,Admin"},
 		Handler{Path: "", Method: Models.POST, Handler: postUser},
-		Handler{Path: "/:userID", Method: Models.GET, Handler: getUser, UseAuth: true},
+		Handler{Path: "/:userID", Method: Models.GET, Handler: getUser, UseAuth: true, Roles: "User,Editor,Admin"},
 		Handler{Path: "/:userID", Method: Models.PUT, Handler: putUser, UseAuth: true, Roles: "User,Admin"},
 		Handler{Path: "/:userID", Method: Models.DELETE, Handler: deleteUser, UseAuth: true, Roles: "User,Admin"},
 	},
-}
-
-type paging struct {
-	Start int `form:"start, default=1"`
-	Size  int `form:"size, default=100"`
-}
-
-type success struct {
-	code    int
-	message string
 }
 
 func getUser(c *gin.Context) {
