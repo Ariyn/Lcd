@@ -1,0 +1,6 @@
+{
+  "DB": {
+    "Driver": "mysql",
+    "ConnectionString": "lcd-dev:lcd-dev@tcp(localhost:3306)/lcd?parseTime=true&timeout=30s"
+  }
+}

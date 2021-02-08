@@ -1,7 +1,7 @@
-package Models
+package lcd
 
 type Article struct {
-	ID    int
+	Uid   int64
 	Owner User
 	Title string
 }
