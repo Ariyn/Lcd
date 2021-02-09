@@ -1,0 +1,6 @@
+[mysql]
+dbname = "lcd"
+host = "localhost"
+user = "lcd-dev"
+pass = "lcd-dev"
+sslmode = "false"
