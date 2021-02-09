@@ -1,7 +1,8 @@
 package lcd
 
 type User struct {
-	Uid  int64
-	Id   string
-	Name string
+	UID      int64
+	Id       string
+	Name     string
+	Articles []Article
 }
