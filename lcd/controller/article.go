@@ -1,30 +1,34 @@
 package controller
 
 import (
+	"database/sql"
 	"github.com/ariyn/Lcd/lcd"
+	"github.com/ariyn/Lcd/models"
 	"github.com/ariyn/Lcd/util"
 	"github.com/labstack/echo"
+	"github.com/volatiletech/sqlboiler/v4/boil"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"log"
 	"net/http"
 	"reflect"
 )
 
 type Article struct {
-	aRepo lcd.ArticleRepository
+	db *sql.DB
 }
 
-func NewArticle(aRepo lcd.ArticleRepository) (c Article) {
+func NewArticle(db *sql.DB) (c Article) {
 	c = Article{
-		aRepo: aRepo,
+		db: db,
 	}
 
 	return c
 }
 
 func (a Article) InitHandlers(e *echo.Echo) {
-	userGroup := e.Group("/articles", util.DefaultContentType("application/json"), util.ErrorLogger)
-	userGroup.GET("/:articleId", a.GetArticle, util.ParseParam("articleId", reflect.Int64))
-	userGroup.POST("", a.CreateArticle, a.ParseArticle)
+	articleGroup := e.Group("/articles", util.DefaultContentType("application/json"), util.ErrorLogger)
+	articleGroup.GET("/:articleId", a.GetArticle, util.ParseParam("articleId", reflect.Int64))
+	articleGroup.POST("", a.CreateArticle, a.ParseArticle)
 }
 
 func (a Article) GetArticle(ctx echo.Context) (err error) {
@@ -33,32 +37,47 @@ func (a Article) GetArticle(ctx echo.Context) (err error) {
 		return ctx.String(http.StatusBadRequest, "Bad Article Id")
 	}
 
-	article, err := a.aRepo.GetArticleByUid(articleId)
-	if err == util.NoResultErr {
-		return ctx.String(404, "")
-	}
-
+	articleDto, err := models.Articles(qm.Where("uid = ?", articleId), qm.Load(models.ArticleRels.ToArticleMaps)).OneG(ctx.Request().Context())
 	if err != nil {
+		if err.Error() == noRowsErr.Error() {
+			return ctx.String(404, "No Such Article")
+		}
 		return err
 	}
+
+	article := lcd.Article{
+		Uid:   int64(articleDto.UID),
+		Title: articleDto.Title,
+	}
+
+	articles := make([]lcd.Article, 0)
+	for _, am := range articleDto.R.ToArticleMaps {
+		articles = append(articles, lcd.Article{
+			Uid:   int64(am.R.ToArticle.UID),
+			Title: am.R.ToArticle.Title,
+		})
+	}
+
+	article.ConnectedArticles = articles
 
 	err = ctx.JSON(http.StatusOK, article)
 	return err
 }
 
 func (a Article) CreateArticle(ctx echo.Context) (err error) {
-	article, ok := ctx.Get("article").(lcd.Article)
+	article, ok := ctx.Get("article").(models.Article)
 	if !ok {
 		return ctx.String(400, "Bad Request")
 	}
 
-	createdUser, err := a.aRepo.CreateArticle(article.Owner, article.Title)
+	log.Println(article)
+
+	err = article.InsertG(ctx.Request().Context(), boil.Infer())
 	if err != nil {
-		log.Println(createdUser, err)
 		return err
 	}
 
-	return ctx.JSON(200, createdUser)
+	return ctx.JSON(200, article)
 }
 
 func (a Article) ParseArticle(next echo.HandlerFunc) echo.HandlerFunc {
@@ -70,7 +89,12 @@ func (a Article) ParseArticle(next echo.HandlerFunc) echo.HandlerFunc {
 			return ctx.String(http.StatusBadRequest, "Bad Request")
 		}
 
-		ctx.Set("article", article)
+		dto := models.Article{
+			UID:      int(article.Uid),
+			Title:    article.Title,
+			OwnerUID: int(article.Owner.UID),
+		}
+		ctx.Set("article", dto)
 		return next(ctx)
 	}
 }

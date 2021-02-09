@@ -1,21 +1,28 @@
 package controller
 
 import (
+	"database/sql"
+	errors2 "errors"
 	"github.com/ariyn/Lcd/lcd"
+	"github.com/ariyn/Lcd/models"
 	"github.com/ariyn/Lcd/util"
 	"github.com/labstack/echo"
+	. "github.com/volatiletech/sqlboiler/queries/qm"
+	"github.com/volatiletech/sqlboiler/v4/boil"
 	"log"
 	"net/http"
 	"reflect"
 )
 
+var noRowsErr = errors2.New("sql: no rows in result set")
+
 type User struct {
-	uRepo lcd.UserRepository
+	db *sql.DB
 }
 
-func NewUser(uRepo lcd.UserRepository) (c User) {
+func NewUser(db *sql.DB) (c User) {
 	c = User{
-		uRepo: uRepo,
+		db: db,
 	}
 
 	return c
@@ -33,38 +40,54 @@ func (c User) GetUser(ctx echo.Context) (err error) {
 		return ctx.String(http.StatusBadRequest, "Bad User Id")
 	}
 
-	user, err := c.uRepo.GetUserByUid(userId)
-	if err == util.NoResultErr {
-		return ctx.String(404, "")
-	}
-
+	user, err := models.Users(Load(models.UserRels.OwnerUIDArticles), Where("uid = ?", userId)).OneG(ctx.Request().Context())
 	if err != nil {
+		if err.Error() == noRowsErr.Error() {
+			return ctx.String(404, "No Such User")
+		}
 		return err
 	}
 
-	err = ctx.JSON(http.StatusOK, user)
+	u := lcd.User{
+		UID:  int64(user.UID),
+		Id:   user.ID,
+		Name: user.Name,
+	}
+
+	articles := make([]lcd.Article, 0)
+	for _, a := range user.R.OwnerUIDArticles {
+		articles = append(articles, lcd.Article{
+			Uid:   int64(a.UID),
+			Owner: u,
+			Title: a.Title,
+		})
+	}
+
+	u.Articles = articles
+
+	err = ctx.JSON(http.StatusOK, u)
 	return err
 }
 
 func (c User) CreateUser(ctx echo.Context) (err error) {
-	user, ok := ctx.Get("user").(lcd.User)
+	user, ok := ctx.Get("user").(models.User)
 	log.Println(user)
 	if !ok {
 		return ctx.String(400, "Bad Request")
 	}
 
-	createdUser, err := c.uRepo.CreateUser(user.Id, user.Name)
+	err = user.InsertG(ctx.Request().Context(), boil.Infer())
 	if err != nil {
-		log.Println(createdUser, err)
+		log.Println(user, err)
 		return err
 	}
 
-	return ctx.JSON(200, createdUser)
+	return ctx.JSON(200, user)
 }
 
 func (c User) ParseUser(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(ctx echo.Context) error {
-		var user User
+		var user models.User
 		err := ctx.Bind(&user)
 		if err != nil {
 			return ctx.String(http.StatusBadRequest, "Bad Request")
