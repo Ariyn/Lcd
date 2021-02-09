@@ -28,6 +28,7 @@ func NewArticle(db *sql.DB) (c Article) {
 func (a Article) InitHandlers(e *echo.Echo) {
 	articleGroup := e.Group("/articles", util.DefaultContentType("application/json"), util.ErrorLogger)
 	articleGroup.GET("/:articleId", a.GetArticle, util.ParseParam("articleId", reflect.Int64))
+	articleGroup.POST("/:articleId/connection", a.ConnectTo, util.ParseParam("articleId", reflect.Int64))
 	articleGroup.POST("", a.CreateArticle, a.ParseArticle)
 }
 
@@ -78,6 +79,44 @@ func (a Article) CreateArticle(ctx echo.Context) (err error) {
 	}
 
 	return ctx.JSON(200, article)
+}
+
+type ConnectTo struct {
+	ToUid int64
+}
+
+func (a Article) ConnectTo(ctx echo.Context) (err error) {
+	articleId, ok := ctx.Get("articleId").(int64)
+	if !ok {
+		return ctx.String(http.StatusBadRequest, "Bad Article Id")
+	}
+
+	var ct ConnectTo
+	err = ctx.Bind(&ct)
+	if err != nil {
+		return
+	}
+
+	articleFrom, err := models.Articles(qm.Where("uid = ?", articleId)).OneG(ctx.Request().Context())
+	if err != nil {
+		return
+	}
+
+	articleTo, err := models.Articles(qm.Where("uid = ?", ct.ToUid)).OneG(ctx.Request().Context())
+	if err != nil {
+		return
+	}
+
+	am := models.ArticleMap{
+		From: articleFrom.UID,
+		To:   articleTo.UID,
+	}
+	err = am.InsertG(ctx.Request().Context(), boil.Infer())
+	if err != nil {
+		return
+	}
+
+	return ctx.String(200, "ok")
 }
 
 func (a Article) ParseArticle(next echo.HandlerFunc) echo.HandlerFunc {
