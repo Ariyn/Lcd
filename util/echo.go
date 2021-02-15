@@ -32,11 +32,11 @@ func DefaultContentType(ct string) echo.MiddlewareFunc {
 	}
 }
 
-func ParseParam(key string, kind reflect.Kind) echo.MiddlewareFunc {
+func ParseParam(key string, kind reflect.Kind, emptyOk bool) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(ctx echo.Context) error {
 			value := ctx.Param(key)
-			if value == "" {
+			if value == "" && !emptyOk {
 				return next(ctx)
 			}
 
@@ -48,6 +48,13 @@ func ParseParam(key string, kind reflect.Kind) echo.MiddlewareFunc {
 				}
 
 				ctx.Set(key, int64(v))
+			case reflect.Int:
+				v, err := strconv.Atoi(value)
+				if err != nil && value != "" {
+					return ctx.String(http.StatusBadRequest, "Bad Request")
+				}
+
+				ctx.Set(key, v)
 			}
 
 			return next(ctx)

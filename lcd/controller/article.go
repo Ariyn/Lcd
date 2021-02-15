@@ -27,9 +27,9 @@ func NewArticle(db *sql.DB) (c Article) {
 
 func (a Article) InitHandlers(e *echo.Echo) {
 	articleGroup := e.Group("/articles", util.DefaultContentType("application/json"), util.ErrorLogger)
-	articleGroup.GET("/:articleId", a.GetArticle, util.ParseParam("articleId", reflect.Int64))
-	articleGroup.POST("/:articleId/connection", a.ConnectTo, util.ParseParam("articleId", reflect.Int64))
 	articleGroup.POST("", a.CreateArticle, a.ParseArticle)
+	articleGroup.GET("/:articleId", a.GetArticle, util.ParseParam("articleId", reflect.Int64, false))
+	articleGroup.POST("/:articleId/connection", a.ConnectTo, util.ParseParam("articleId", reflect.Int64, false))
 }
 
 func (a Article) GetArticle(ctx echo.Context) (err error) {

@@ -7,8 +7,8 @@ import (
 	"github.com/ariyn/Lcd/models"
 	"github.com/ariyn/Lcd/util"
 	"github.com/labstack/echo"
-	. "github.com/volatiletech/sqlboiler/queries/qm"
 	"github.com/volatiletech/sqlboiler/v4/boil"
+	. "github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"log"
 	"net/http"
 	"reflect"
@@ -30,7 +30,7 @@ func NewUser(db *sql.DB) (c User) {
 
 func (c User) InitHandlers(e *echo.Echo) {
 	userGroup := e.Group("/users", util.DefaultContentType("application/json"), util.ErrorLogger)
-	userGroup.GET("/:userId", c.GetUser, util.ParseParam("userId", reflect.Int64))
+	userGroup.GET("/:userId", c.GetUser, util.ParseParam("userId", reflect.Int64, false))
 	userGroup.POST("", c.CreateUser, c.ParseUser)
 }
 
