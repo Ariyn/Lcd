@@ -28,8 +28,31 @@ func NewArticle(db *sql.DB) (c Article) {
 func (a Article) InitHandlers(e *echo.Echo) {
 	articleGroup := e.Group("/articles", util.DefaultContentType("application/json"), util.ErrorLogger)
 	articleGroup.POST("", a.CreateArticle, a.ParseArticle)
+	articleGroup.GET("", a.GetArticles, util.ParseParam("offset", reflect.Int, true), util.ParseParam("limit", reflect.Int, true))
 	articleGroup.GET("/:articleId", a.GetArticle, util.ParseParam("articleId", reflect.Int64, false))
 	articleGroup.POST("/:articleId/connection", a.ConnectTo, util.ParseParam("articleId", reflect.Int64, false))
+}
+
+func (a Article) GetArticles(ctx echo.Context)(err error) {
+	offset, ok := ctx.Get("offset").(int)
+	if !ok {
+		offset = 0
+	}
+
+	limit, ok := ctx.Get("limit").(int)
+	if !ok {
+		limit = 10
+	}
+
+	articles, err := models.Articles(qm.Offset(offset), qm.Limit(limit)).AllG(ctx.Request().Context())
+	if err != nil {
+		if err.Error() == noRowsErr.Error() {
+			return ctx.String(404, "No Such Article")
+		}
+		return err
+	}
+
+	return ctx.JSON(200, articles)
 }
 
 func (a Article) GetArticle(ctx echo.Context) (err error) {
